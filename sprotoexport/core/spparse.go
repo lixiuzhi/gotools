@@ -1,4 +1,4 @@
-package sprotoexport
+package spparse
 
 import (
 	"fmt"

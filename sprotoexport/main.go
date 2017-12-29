@@ -1,7 +1,7 @@
 package main
 
 import (
-	spexport "github.com/lixiuzhi/gotools/sprotoexport"
+	spexport "github.com/lixiuzhi/gotools/sprotoexport/core"
 )
 
 var testProto = `

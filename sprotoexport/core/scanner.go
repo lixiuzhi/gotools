@@ -1,4 +1,4 @@
-package sprotoexport
+package core
 
 import (
 	"bytes"
