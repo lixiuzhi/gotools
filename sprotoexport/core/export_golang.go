@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"text/template"
 	"strconv"
+	"io/ioutil"
 )
 
-const templateStr = `
+const templateGoStr = `
 package proto
 
 import (
@@ -23,13 +24,13 @@ const (
 
 //结构体区域
 {{range $i, $class := .Classes}}
-type {{.Name}} struct{ {{range $_, $field := .Fields}}{{GetClassFiledComment	$field}}
-	{{$field.Name}} {{GetClassFiledType $field}} {{GetClassFiledDescribe $field}}{{end}}
+type {{.Name}} struct{ {{range $_, $field := .Fields}}{{GetClassFieldComment	$field}}
+	{{$field.Name}} {{GetClassFieldType $field}} {{GetClassFieldDescribe $field}}{{end}}
 }
 {{end}}
 `
 
-func getClassFiledType(field * ClassField) string {
+func getGoClassFieldType(field * ClassField) string {
 
 	str := ""
 	if field.Repeatd {
@@ -43,10 +44,12 @@ func getClassFiledType(field * ClassField) string {
 		str += "int32"
 	case "int64":
 		str += "int64"
-	case "boolean":
+	case "bool":
 		str += "bool"
 	case "string":
 		str += "string"
+	case "double":
+		str +="float64"
 	default:
 		//如果是枚举类型
 		if field.TypeIsEnum{
@@ -59,7 +62,7 @@ func getClassFiledType(field * ClassField) string {
 	return str
 }
 
-func getClassFiledDescribe(field * ClassField) string {
+func getGoClassFieldDescribe(field * ClassField) string {
 
 	str := " `sproto:\""
 
@@ -100,7 +103,7 @@ func getClassFiledDescribe(field * ClassField) string {
 }
 
 
-func getClassFiledComment(field * ClassField) string {
+func getGoClassFieldComment(field * ClassField) string {
 	var str =""
 	for _,v:= range field.Comment  {
 		str+="\n	//"
@@ -112,17 +115,21 @@ func getClassFiledComment(field * ClassField) string {
 }
 
 
-func GenGo(parser * SPParser){
+func GenGo(parser * SPParser,outPath string){
+
+	outfileName :=parser.fileName+".go"
+
+	fmt.Println("开始生成go文件:",outfileName)
 
 	var bf bytes.Buffer
 
 	funcMap := template.FuncMap{
-		"GetClassFiledComment"	:getClassFiledComment,
-		"GetClassFiledType"		:getClassFiledType,
-		"GetClassFiledDescribe"	:getClassFiledDescribe,
+		"GetClassFieldComment"	:getGoClassFieldComment,
+		"GetClassFieldType"		:getGoClassFieldType,
+		"GetClassFieldDescribe"	:getGoClassFieldDescribe,
 	}
 
-	tpl, err := template.New("genGolang").Funcs(funcMap).Parse(templateStr)
+	tpl, err := template.New("genGolang").Funcs(funcMap).Parse(templateGoStr)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -134,5 +141,5 @@ func GenGo(parser * SPParser){
 		return
 	}
 
-	fmt.Println(string(bf.Bytes()))
+	ioutil.WriteFile(outPath+"/"+outfileName,bf.Bytes(),0666)
 }

@@ -2,52 +2,46 @@ package main
 
 import (
 	spexport "github.com/lixiuzhi/gotools/sprotoexport/core"
+	"io/ioutil"
+	"fmt"
+	"strings"
 )
-
-var testProto = `
-
-message Test1{
-    A int64
-}
-
-// 注释注释注释
-message Test2{
-
-	A int64
-
-	B string
-
-	C int32
-
-	D []Test1
-
-	E []int32 // 注释测试
-
-	F Test1
-
-	G GTest3
-
-	H binary
-}
-
-
-enum Test3 {
-	OK					// 成功
-	ERROR			    //error
-    OTHER			// 其他
-
-}
-
-`
 
 func main(){
 	scanner := &spexport.Scanner{}
 	//data,_:=ioutil.ReadFile("test.sp")
 
-	tokens,_ := scanner.GetTokens(testProto)
+	var basePath ="protos"
 
+	fileinfos,err :=ioutil.ReadDir(basePath)
+	if err!=nil{
+		fmt.Errorf("读取协议目录出错,",err.Error())
+		return
+	}
+
+	var allFileStr = ""
+
+	for _,v :=range fileinfos{
+
+		if  strings.HasSuffix(strings.ToLower(v.Name()),".sp"){
+
+			fmt.Println("开始读取文件:",basePath+"/"+v.Name())
+
+			if data,err1:=ioutil.ReadFile(basePath+"/"+v.Name());err1==nil{
+				allFileStr+=string(data)
+			}else {
+
+				fmt.Println("读取协议文件出错,",err1.Error())
+				return
+			}
+		}
+	}
+
+	tokens,_ := scanner.GetTokens(allFileStr)
 	parser :=&spexport.SPParser{}
-	parser.Parse(tokens)
+	parser.Parse(tokens,"proto")
 
-	spexport.GenGo(parser)
+	//spexport.GenGo(parser,"bin/out")
+	spexport.GenCS(parser,"bin/out")
+	spexport.GenJava(parser,"com.lxz","bin/out")
 }

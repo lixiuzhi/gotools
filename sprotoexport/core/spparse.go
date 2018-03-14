@@ -1,9 +1,10 @@
-package spparse
+package core
 
 import (
 	"fmt"
 	"errors"
 	"os"
+	"strings"
 )
 
 type CommentField struct {
@@ -55,6 +56,7 @@ type ClassType struct {
 
 type SPParser struct {
 
+	fileName	string
 	maxLine		int
 	allComments []*CommentField
 	allField 	map[int]interface{}
@@ -177,12 +179,17 @@ func (this*SPParser) fill() error{
 	return nil
 }
 
-func (this*SPParser) Parse(tokenInfos []*TokenInfo) {
+func (this*SPParser) Parse(tokenInfos []*TokenInfo,fileName string) {
+
+	fileName = strings.Replace(fileName,".sp","",1)
+
+	fmt.Println("开始解析文件:",fileName)
 
 	this.allComments = make([]*CommentField, 0, 100)
 	this.allField = make(map[int]interface{})
 	this.Enums = make(map[int]*EnumType)
 	this.Classes = make(map[int]*ClassType)
+	this.fileName =fileName
 
 	count := len(tokenInfos)
 
@@ -193,7 +200,7 @@ func (this*SPParser) Parse(tokenInfos []*TokenInfo) {
 	}
 
 	for i := 0; i < count; i++ {
-		fmt.Printf("开始解析line:%d,%s\n", tokenInfos[i].Line, tokenInfos[i].Value)
+		//fmt.Printf("开始解析line:%d,%s\n", tokenInfos[i].Line, tokenInfos[i].Value)
 
 		switch tokenInfos[i].Value {
 		case "/":
@@ -397,7 +404,7 @@ func (this* SPParser)parseField(tokenInfos []*TokenInfo,index int) (int,error) {
 
 func (this* SPParser)parseEnumField(tokenInfos []*TokenInfo,index int) (int,error) {
 
-	fmt.Println("开始解析enum field\n")
+	//fmt.Println("开始解析enum field\n")
 
 	//判断当前行是否已经被当做类区域解析过了
 
@@ -417,7 +424,7 @@ func (this* SPParser)parseEnumField(tokenInfos []*TokenInfo,index int) (int,erro
 
 func (this* SPParser)parseClassField(tokenInfos []*TokenInfo,index int) (int,error) {
 
-	fmt.Println("开始解析class field\n")
+	//fmt.Println("开始解析class field\n")
 
 	//判断当前行是否已经被当做类区域解析过了
 	if _,has:=this.allField[tokenInfos[index].Line];has {
