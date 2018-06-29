@@ -5,79 +5,8 @@ import (
 	"fmt"
 	"text/template"
 	"io/ioutil"
+	"errors"
 )
-
-const templateJavaEnum = `
-package {{GetJavaPackageName}};
-
-public class {{.Name}}{
- {{range $i,$enumfield :=.Fields}} 
-	public static final int {{$enumfield.Name}} = {{$enumfield.LocalIndex}};	{{GetEnumFieldComment	$enumfield}} {{end}}
-}
-`
-
-const templateJavaClass = `
-package {{GetJavaPackageName}};
-
-import com.lxz.sproto.*;
-import java.util.List;
-import java.util.function.Supplier;
-
-public class {{.Name}} extends SprotoTypeBase {
-
-	private static int max_field_count = {{len .Fields}};
-	public static Supplier<{{.Name}}> proto_supplier = ()->new {{.Name}}();
-
-	public {{.Name}}(){
-			super(max_field_count);
-	}
-	
-	public {{.Name}}(byte[] buffer){
-			super(max_field_count, buffer);
-			this.decode ();
-	} 
-
-	{{range $fieldIndex, $field := .Fields}} 
-	private {{GetClassFieldType $field}} _{{$field.Name}}; // tag {{$fieldIndex}}
-	public boolean Has{{$field.Name}}(){
-		return super.has_field.has_field({{$fieldIndex}});
-	}
-	public {{GetClassFieldType $field}} get{{$field.Name}}() {
-		return _{{$field.Name}};
-	}
-	public void set{{$field.Name}}({{GetClassFieldType $field}} value){
-		super.has_field.set_field({{$fieldIndex}},true);
-		_{{$field.Name}} = value;
-	}
- 
-	{{end}}
-	protected void decode () {
-		int tag = -1;
-		while (-1 != (tag = super.deserialize.read_tag ())) {
-			switch (tag) {	
-	{{range $fieldIndex, $field := .Fields}}
-			case {{$fieldIndex}}:
-				this.set{{$field.Name}}(super.deserialize.{{getClassFieldReadFunc $field}});
-				break;
-	{{end}}
-			default:
-				super.deserialize.read_unknow_data ();
-				break;
-			}
-		}
-	}
-	
-	public int encode (SprotoStream stream) {
-			super.serialize.open (stream);
-	{{range $fieldIndex, $field := .Fields}}
-			if (super.has_field.has_field ({{$fieldIndex}})) {
-				super.serialize.{{getClassFieldWriteFuncName $field}}(this._{{$field.Name}}, {{$fieldIndex}});
-			} 
-	{{end}}
-			return super.serialize.close ();
-	}
-}
-`
 
 func getJavaClassFieldReadFunc(field * ClassField) string {
 
@@ -209,7 +138,11 @@ func getJavaEnumFieldComment(field * EnumField) string {
 }
 
 
-func GenJava(parser * SPParser,packageName string,outPath string){
+func GenJava(parser * SPParser,packageName string,outPath string)error{
+
+	if has,_:=PathExists(outPath);!has{
+		return errors.New(fmt.Sprintf("生成java，目录%s 不存在，或者出错!\n",outPath))
+	}
 
 	funcMap := template.FuncMap{
 		"GetJavaPackageName"			:func() string{return packageName},
@@ -222,10 +155,9 @@ func GenJava(parser * SPParser,packageName string,outPath string){
 	}
 
 	//导出枚举类
-	enumTpl, err := template.New("genGolang").Funcs(funcMap).Parse(templateJavaEnum)
+	enumTpl, err := template.New("genJavaEnum").Funcs(funcMap).Parse(toJavaEnumTemplate)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	for _,enum :=range parser.Enums{
@@ -236,17 +168,15 @@ func GenJava(parser * SPParser,packageName string,outPath string){
 		var bf bytes.Buffer
 		err = enumTpl.Execute(&bf, enum)
 		if err != nil {
-			fmt.Println(err.Error())
-			return
+			return err
 		}
 		ioutil.WriteFile(outPath+"/"+outfileName,bf.Bytes(),0666)
 	}
 
 	//导出class
-	classTpl, err := template.New("genGolang").Funcs(funcMap).Parse(templateJavaClass)
+	classTpl, err := template.New("genJavaClass").Funcs(funcMap).Parse(toJavaClassTemplate)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	for _,class :=range parser.Classes{
@@ -257,9 +187,23 @@ func GenJava(parser * SPParser,packageName string,outPath string){
 		var bf bytes.Buffer
 		err = classTpl.Execute(&bf, class)
 		if err != nil {
-			fmt.Println(err.Error())
-			return
+			return err
 		}
 		ioutil.WriteFile(outPath+"/"+outfileName,bf.Bytes(),0666)
 	}
+
+	//导出classMap
+	classMapTpl, err := template.New("genJavaClassMap").Funcs(funcMap).Parse(toJavaMessageUtilTemplate)
+	if err != nil {
+		return err
+	}
+
+	var bf bytes.Buffer
+	err = classMapTpl.Execute(&bf, parser)
+	if err != nil {
+		return err
+	}
+	ioutil.WriteFile(outPath+"/MessageUtil.java",bf.Bytes(),0666)
+
+	return nil
 }

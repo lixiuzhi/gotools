@@ -12,8 +12,10 @@ var ignoreChars = [...]rune{' ','\t'}
 var standTokenChars = [...]rune{':',';','/','[',']','{','}','*','+','-','>','(',')' }
 
 type TokenInfo struct {
-	Value 	string
-	Line	int
+	Value 		string
+	LocalLine	int
+	LineOffset	int
+	FileName	string
 }
 
 type Scanner struct {
@@ -39,13 +41,13 @@ func (this*Scanner) IsIgnoreChar(c rune) bool {
 }
 
 func (this*Scanner) IsEOFChar(c rune) bool {
-	 if c=='\n'{
+	 if c=='\n'|| c=='\r'{
 	 	return true
 	 }
 	 return false
 }
 
-func (this*Scanner) GetTokens(text string) ([]*TokenInfo,error) {
+func (this*Scanner) GetTokens(text,filename string) ([]*TokenInfo) {
 
 	tokens := make([]*TokenInfo, 0, tokenDefaultCapSize)
 
@@ -59,14 +61,16 @@ func (this*Scanner) GetTokens(text string) ([]*TokenInfo,error) {
 			if len(str) != 0 {
 				tokens = append(tokens, &TokenInfo{
 					Value: str,
-					Line:  i,
+					LocalLine:  i,
+					FileName:filename,
 				})
 				buf.Reset()
 			}
 			//写入换行
 			tokens = append(tokens, &TokenInfo{
 				Value: "*EOF*",
-				Line:  i,
+				LocalLine:  i,
+				FileName:filename,
 			})
 			i++
 			continue
@@ -78,14 +82,16 @@ func (this*Scanner) GetTokens(text string) ([]*TokenInfo,error) {
 			if len(str) != 0 {
 				tokens = append(tokens, &TokenInfo{
 					Value: str,
-					Line:  i,
+					LocalLine:  i,
+					FileName:filename,
 				})
 				buf.Reset()
 			}
 			//写入独立token
 			tokens = append(tokens, &TokenInfo{
 				Value: string(c),
-				Line:  i,
+				LocalLine:  i,
+				FileName:filename,
 			})
 
 			continue
@@ -97,7 +103,8 @@ func (this*Scanner) GetTokens(text string) ([]*TokenInfo,error) {
 			if len(str) != 0 {
 				tokens = append(tokens, &TokenInfo{
 					Value: str,
-					Line:  i,
+					LocalLine:  i,
+					FileName:filename,
 				})
 				buf.Reset()
 			}
@@ -110,10 +117,11 @@ func (this*Scanner) GetTokens(text string) ([]*TokenInfo,error) {
 	if len(str) != 0 {
 		tokens = append(tokens, &TokenInfo{
 			Value: str,
-			Line:  i,
+			LocalLine:  i,
+			FileName:filename,
 		})
 		buf.Reset()
 	}
 
-	return tokens, nil
+	return tokens
 }

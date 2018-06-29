@@ -6,6 +6,7 @@ import (
 	"text/template"
 	"strconv"
 	"io/ioutil"
+	"errors"
 )
 
 const templateGoStr = `
@@ -115,7 +116,11 @@ func getGoClassFieldComment(field * ClassField) string {
 }
 
 
-func GenGo(parser * SPParser,outPath string){
+func GenGo(parser * SPParser,outPath string) error{
+
+	if has,_:=PathExists(outPath);!has{
+		return errors.New(fmt.Sprintf("生成golang，目录%s 不存在，或者出错!\n",outPath))
+	}
 
 	outfileName :=parser.fileName+".go"
 
@@ -131,15 +136,15 @@ func GenGo(parser * SPParser,outPath string){
 
 	tpl, err := template.New("genGolang").Funcs(funcMap).Parse(templateGoStr)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return nil
 	}
 
 	err = tpl.Execute(&bf, *parser)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return nil
 	}
 
 	ioutil.WriteFile(outPath+"/"+outfileName,bf.Bytes(),0666)
+
+	return nil
 }
